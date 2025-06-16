@@ -2,6 +2,8 @@ import sqlite3
 import os
 import re
 
+have_we_bool = True
+
 # Database file name
 DB_FILE = "todos.db"
 
@@ -62,7 +64,8 @@ while True:
         # Delete a todo task by its ID
         idx_input = input("Enter the number of the todo to delete: ")
         # Validate input to ensure it's a positive integer
-        if re.match(r"^[0-9]+$", idx_input):
+        when = re.match(r"^[0-9]+$", idx_input)
+        if  when:          
             idx = int(idx_input)
             cursor.execute("DELETE FROM todos WHERE id = ?", (idx,))
             if cursor.rowcount > 0:
