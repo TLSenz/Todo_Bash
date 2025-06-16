@@ -2,7 +2,7 @@ import sqlite3
 import os
 import re
 
-have_we_bool = True
+auto_show_after_add = True
 
 # Database file name
 DB_FILE = "todos.db"
@@ -46,6 +46,12 @@ while True:
             cursor.execute("INSERT INTO todos (task) VALUES (?)", (task,))
             conn.commit()
             print("Todo added successfully.")
+              if auto_show_after_add:
+                cursor.execute("SELECT id, task FROM todos")
+                rows = cursor.fetchall()
+                print("Your Todos:")
+                for row in rows:
+                    print(f"{row[0]}: {row[1]}")
         else:
             print("Todo task cannot be empty. Please try again.")
 
