@@ -45,7 +45,8 @@ def show_todos(cursor):
     """Queries and displays all todos, including a count of todos."""
     cursor.execute("SELECT id, task FROM todos")
     rows = cursor.fetchall()
-    todo_count = len(rows)  # Calculation: Count the number of todos
+    cursor.execute("SELECT COUNT(*) FROM todos")  # SQL query to count the number of todos
+    todo_count = cursor.fetchone()[0]
     if not rows:
         print("No todos found.")
     else:
