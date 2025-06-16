@@ -1,98 +1,106 @@
 import sqlite3
 import os
 import re
-
-auto_show_after_add = True
-
-# Database file name
-DB_FILE = "todos.db"
-
+ 
+# --- Global Variables ---
+auto_show_after_add = True  # Boolean: Controls whether todos are displayed automatically after adding
+DB_FILE = "todos.db"  # String: SQLite database file name
+MAX_TODOS = 100  # Integer: Maximum allowed number of todos (for demonstration of a calculation)
+ 
 # --- Database Initialization and Connection ---
-try:
-    # Connect to the SQLite database. If the file doesn't exist, it will be created.
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-
-    # Create the 'todos' table if it doesn't already exist.
-    # 'id' is an auto-incrementing primary key.
-    # 'task' stores the todo description and cannot be empty.
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS todos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            task TEXT NOT NULL
-        )
-    """)
-    conn.commit()  # Save the table creation
-except Exception as e:
-    # Handle connection or table creation errors
-    print(f"Error connecting to database or creating table: {e}")
-    print(f"Please ensure '{DB_FILE}' can be created or accessed, and that you have necessary permissions.")
-    exit() # Corrected from 'Exit' to 'exit()'
-
-# --- Main Application Loop ---
-while True:
-    print("\n=== Todo App Menu ===")
-    print("1. Add Todo")
-    print("2. Show Todos")
-    print("3. Delete Todo")
-    print("4. Exit")
-
-    choice = input("Choose an option: ")
-
-    if choice == "1":
-        # Add a new todo task
-        task = input("Enter your todo: ")
-        if task.strip(): # Ensure task is not empty or just whitespace
-            cursor.execute("INSERT INTO todos (task) VALUES (?)", (task,))
-            conn.commit()
-            print("Todo added successfully.")
-              if auto_show_after_add:
-                cursor.execute("SELECT id, task FROM todos")
-                rows = cursor.fetchall()
-                print("Your Todos:")
-                for row in rows:
-                    print(f"{row[0]}: {row[1]}")
-        else:
-            print("Todo task cannot be empty. Please try again.")
-
-    elif choice == "2":
-        # Show all existing todo tasks
-        cursor.execute("SELECT id, task FROM todos")
-        rows = cursor.fetchall()
-        if not rows:
-            print("No todos found.")
-        else:
-            print("Your Todos:")
-            for row in rows:
-                print(f"{row[0]}: {row[1]}")
-
-    elif choice == "3":
-        # Delete a todo task by its ID
-        idx_input = input("Enter the number of the todo to delete: ")
-        # Validate input to ensure it's a positive integer
-        when = re.match(r"^[0-9]+$", idx_input)
-        if  when:          
-            idx = int(idx_input)
-            cursor.execute("DELETE FROM todos WHERE id = ?", (idx,))
-            if cursor.rowcount > 0:
-                # If a row was actually deleted, commit the change
-                conn.commit()
-                print("Todo deleted successfully.")
-            else:
-                # If no row was deleted, the ID was not found
-                print("Todo with that ID not found. Please try again with a valid ID.")
-        else:
-            print("Invalid input. Please enter a valid number for the todo ID.")
-
-    elif choice == "4":
-        # Exit the application
-        print("Exiting Todo App. Goodbye!")
-        break
-
+def init_database():
+    """Initializes the database and creates the 'todos' table if it doesn't exist."""
+    try:
+        conn = sqlite3.connect(DB_FILE)  # Connect to the database
+        cursor = conn.cursor()
+        # Create the 'todos' table with ID (auto-increment) and task (text, not null)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS todos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                task TEXT NOT NULL
+            )
+        """)
+        conn.commit()  # Save changes
+        return conn, cursor
+    except Exception as e:
+        # Handle errors during database connection or table creation
+        print(f"Error connecting to database or creating table: {e}")
+        print(f"Please ensure '{DB_FILE}' can be created or accessed.")
+        exit()
+ 
+# --- Add Todo ---
+def add_todo(cursor, conn, task):
+    """Adds a new todo to the database and optionally displays all todos."""
+    if task.strip():  # Check if task is not empty or just whitespace
+        cursor.execute("INSERT INTO todos (task) VALUES (?)", (task,))
+        conn.commit()
+        print("Todo added successfully.")
+        if auto_show_after_add:
+            show_todos(cursor)  # Show all todos if enabled
     else:
-        # Handle invalid menu choices
-        print("Invalid option. Please choose from 1, 2, 3, or 4.")
+        print("Todo task cannot be empty. Please try again.")
+ 
+# --- Show Todos ---
+def show_todos(cursor):
+    """Queries and displays all todos, including a count of todos."""
+    cursor.execute("SELECT id, task FROM todos")
+    rows = cursor.fetchall()
+    todo_count = len(rows)  # Calculation: Count the number of todos
+    if not rows:
+        print("No todos found.")
+    else:
+        print(f"\nYour Todos (total: {todo_count}):")
+        for row in rows:  # For loop to iterate through todos
+            print(f"{row[0]}: {row[1]}")
+        # Warn if maximum number of todos is reached
+        if todo_count >= MAX_TODOS:
+            print(f"Warning: Maximum number of {MAX_TODOS} todos reached.")
+ 
+# --- Delete Todo ---
+def delete_todo(cursor, conn, idx_input):
+    """Deletes a todo based on the provided ID."""
+    when = re.match(r"^[0-9]+$", idx_input)  # Check if input is a positive integer
+    if when:
+        idx = int(idx_input)
+        cursor.execute("DELETE FROM todos WHERE id = ?", (idx,))
+        if cursor.rowcount > 0:  # Check if a todo was deleted
+            conn.commit()
+            print("Todo deleted successfully.")
+        else:
+            print("Todo with this ID not found. Please enter a valid ID.")
+    else:
+        print("Invalid input. Please enter a valid number for the todo ID.")
+ 
+# --- Main Program ---
+def main():
+    """Main program with menu loop and match case construct for user inputs."""
+    conn, cursor = init_database()  # Initialize database
 
-# --- Close the database connection when the loop exits ---
-conn.close()
+    while True:  # Main loop for the menu
+        print("\n=== Todo App Menu ===")
+        print("1. Add Todo")
+        print("2. Show Todos")
+        print("3. Delete Todo")
+        print("4. Exit")
 
+        choice = input("Choose an option: ")
+
+        # Match case construct: Execute the corresponding action
+        match choice:
+            case "1":
+                add_todo(cursor, conn, input("Enter your todo: "))
+            case "2":
+                show_todos(cursor)
+            case "3":
+                delete_todo(cursor, conn, input("Enter the number of the todo to delete: "))
+            case "4":
+                print("Exiting Todo App. Goodbye!")
+                break  # Exit the loop
+            case _:  # Default case for any other input
+                print("Invalid option. Please choose 1, 2, 3, or 4.")
+
+    # --- Close Database Connection ---
+    conn.close()
+# Start the program
+if __name__ == "__main__":
+    main()
